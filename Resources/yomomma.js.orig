@@ -1,0 +1,367 @@
+var g6 = {
+
+    name:			'g6',
+    mainGameIDName:		'mainGameID',
+
+    canvasParentID:		'game',
+
+    player:			null,
+    playerIDName:		'playerID',
+    playerTilesName:		'playerTiles',
+    playerTileWidth:		16,
+    playerTileHeight:		32,
+    playerSpriteName:		'playerSprite',
+    playerImageFileName:	'pdulr1t.png',
+    playerRightFrameIndex:	3,
+    playerLeftFrameIndex:	2,
+    playerUpFrameIndex:		1,
+    playerDownFrameIndex:	0,
+
+    enemySpeed:			2,
+    enemyBaseIDName:		'enemyID',
+    enemyNextID:		0,
+    enemyTilesName:		'enemyTiles',
+    enemyTileWidth:		16,
+    enemyTileHeight:		16,
+    enemySpriteName:		'enemySprite',
+    enemyImageFileName:		'enemySprite.png',
+    thinkCountInit:		6,
+
+    backgroundGroupName:	'backgroundGroup',
+    playerGroupName:		'playerGroup',
+    enemyGroupName:		'enemyGroup',
+    shotGroupName:		'shotGroup',
+    explosionGroupName:		'explosionGroup',
+    gameGroupName:		'gameGroup',
+
+    kStillBitMask:		0,
+    kRightBitMask:		1,
+    kDownBitMask:		2,
+    kLeftBitMask:		4,
+    kUpBitMask:			8,
+
+    mainFn: function() {
+	gbox.setGroups( [
+	    g6.backgroundGroupName,
+	    g6.playerGroupName,
+	    g6.enemyGroupName,
+	    g6.shotGroupName,
+	    g6.explosionGroupName,
+	    g6.gameGroupName ] );
+
+	g6.mainGame = gamecycle.createMaingame( g6.mainGameIDName, g6.gameGroupName );
+
+	// disable various intro crap.
+	g6.mainGame.gameIntroAnimation = g6.duncleResetFn;
+	g6.mainGame.gameTitleIntroAnimation = g6.duncleResetFn;
+	g6.mainGame.pressStartIntroAnimation = g6.duncleResetFn;
+	g6.mainGame.gameMenu = g6.duncleResetFn;
+
+	g6.mainGame.initializeGame = g6.initializeGameFn;
+	g6map.setupMapFn();
+
+	gbox.go();
+    },
+
+    duncleResetFn: function( reset ) {
+	return true;
+    },
+
+    initializeGameFn: function() {
+	g6.addPlayerFn();
+	g6map.addMapFn();
+	g6.addEnemiesFn();
+    },
+
+    getDirectionBitsFn: function( th ) {
+	var directionBits = g6.kStillBitMask;
+	if( th.accx > 0 ) { directionBits |= g6.kRightBitMask; }
+	if( th.accx < 0 ) { directionBits |= g6.kLeftBitMask; }
+	if( th.accy > 0 ) { directionBits |= g6.kDownBitMask; }
+	if( th.accy < 0 ) { directionBits |= g6.kUpBitMask; }
+	return directionBits;
+    },
+
+    addPlayerFn: function() {
+	g6.player = gbox.addObject( {
+	    id: g6.playerIDName,
+	    group: g6.playerGroupName,
+	    tileset: g6.playerTilesName,
+	    initialize: g6.playerInitFn,
+	    first: g6.playerFirstFn,
+	    blit: g6.standardBlitFn,
+	    colh: gbox.getTiles( g6.playerTilesName ).tileh,
+	} );
+    },
+
+    playerInitFn: function() {
+	toys.topview.initialize( this, {} );
+	this.x = 20;
+	this.y = 20;
+    },
+
+    playerFirstFn: function() {
+	toys.topview.controlKeys( this, { left: 'left', right: 'right', up: 'up', down: 'down' } );
+	toys.topview.handleAccellerations( this );
+	toys.topview.applyForces( this );
+	toys.topview.tileCollision( this, g6map.map, 'map', null, { tolerance: 6, approximation: 3 } );
+	g6.playerFirstFrameFn( this );
+	g6.checkShootFn( this );
+    },
+
+    playerFirstFrameFn: function( th ) {
+	var dbits = g6.getDirectionBitsFn( th );
+	if( dbits & g6.kRightBitMask ) {
+	    th.frame = g6.playerRightFrameIndex;
+	}
+	if( dbits & g6.kLeftBitMask ) {
+	    th.frame = g6.playerLeftFrameIndex;
+	}
+	if( dbits & g6.kUpBitMask ) {
+	    th.frame = g6.playerUpFrameIndex;
+	}
+	if( dbits & g6.kDownBitMask ) {
+	    th.frame = g6.playerDownFrameIndex;
+	}
+    },
+
+    checkShootFn: function( th ) {
+	if( gbox.keyIsHit( 'c' ) ) {
+	    
+	    // right-handed gun default.
+	    var params = {
+		dx: 0,
+		dy: 0,
+		ox: 0,
+		oy: 0,
+	    };
+
+	    // to get nice diagonals, we have to check direction bits.
+	    // but if those are empty then we fall back to frame #.
+	    if( g6.getDirectionBitsFn( th ) !== g6.kStillBitMask ) {
+		g6.checkShootFromDirectionFn( th, params );
+	    }
+	    else {
+		g6.checkShootFromFrameFn( th, params );
+	    }
+
+	    g6shot.addShotFn( th.x + params.ox, th.y + params.oy, params.dx, params.dy );
+	};
+    },
+
+    checkShootFromDirectionFn: function( th, params ) {
+	var dbits = g6.getDirectionBitsFn( th );
+
+	if( dbits & g6.kRightBitMask ) {
+	    g6.rightShootFn( th, params );
+	}
+	else if( dbits & g6.kLeftBitMask ) {
+	    g6.leftShootFn( th, params );
+	}
+
+	if( dbits & g6.kUpBitMask ) {
+	    g6.upShootFn( th, params );
+	}
+	else if( dbits & g6.kDownBitMask ) {
+	    g6.downShootFn( th, params );
+	}
+    },
+
+    checkShootFromFrameFn: function( th, params ) {
+	switch( th.frame ) {
+	case g6.playerRightFrameIndex:
+	    g6.rightShootFn( th, params );
+	    break;
+	case g6.playerLeftFrameIndex:
+	    g6.leftShootFn( th, params );
+	    break;
+	case g6.playerUpFrameIndex:
+	    g6.upShootFn( th, params );
+	    break;
+	case g6.playerDownFrameIndex:
+	    g6.downShootFn( th, params );
+	    break;
+	default:
+	    alert( "unsupported frame index " + th.frame );
+	    break;
+	}
+    },
+
+    rightShootFn: function( th, params ) {
+	params.dx = g6shot.shotSpeed;
+	params.ox = th.colw;
+	params.oy = th.colhh;
+    },
+
+    leftShootFn: function( th, params ) {
+	params.dx = -g6shot.shotSpeed;
+	params.oy = th.colhh;
+    },
+
+    upShootFn: function( th, params ) {
+	params.dy = -g6shot.shotSpeed;
+	params.ox = th.colw;
+    },
+
+    downShootFn: function( th, params ) {
+	params.dy = g6shot.shotSpeed;
+	params.oy = th.colh;
+    },
+
+    playerLoadTilesFn: function() {
+	gbox.addImage( g6.playerSpriteName, g6.playerImageFileName );
+	gbox.addTiles( {
+	    id: g6.playerTilesName,
+	    image: g6.playerSpriteName,
+	    tilew: g6.playerTileWidth,
+	    tileh: g6.playerTileHeight,
+	    tilerow: 4,
+	    gapx: 0,
+	    gapy: 0
+	} );
+    },
+
+    addEnemiesFn: function() {
+	g6.addEnemyFn();
+    },
+
+    addEnemyFn: function() {
+	var eid = g6.enemyNextID++;
+	g6.enemy = gbox.addObject( {
+	    id: g6.enemyBaseIDName + eid,
+	    group: g6.enemyGroupName,
+	    tileset: g6.enemyTilesName,
+	    initialize: g6.enemyInitFn,
+	    first: g6.enemyFirstFn,
+	    blit: g6.standardBlitFn,
+	    colh: gbox.getTiles( g6.enemyTilesName ).tileh,
+	    explode: g6.enemyExplodeFn,
+	    speed: g6.enemySpeed,
+	} );
+    },
+
+    enemyInitFn: function() {
+	toys.topview.initialize( this, {} );
+	this.x = 100;
+	this.y = 100;
+    },
+
+    enemyFirstFn: function() {
+	if( ! this.thinkCount || this.thinkCount === 0 ) {
+	    this.thinkCount = g6.thinkCountInit;
+
+	    var dx = g6.player.x - this.x;
+	    var dy = g6.player.y - this.y;
+	    if( dx > 0 ) {
+		this.mx = this.speed;
+	    }
+	    else if( dx < 0 ) {
+		this.mx = -this.speed;
+	    }
+	    if( dy > 0 ) {
+		this.my = this.speed;
+	    }
+	    else if( dy < 0 ) {
+		this.my = -this.speed;
+	    }
+	}
+	this.thinkCount--;
+	this.x += this.mx;
+	this.y += this.my;
+
+	toys.topview.tileCollision( this, g6map.map, 'map', null, { tolerance: 6, approximation: 3 } );
+    },
+
+    enemyLoadTilesFn: function() {
+	gbox.addImage( g6.enemySpriteName, g6.enemyImageFileName );
+	gbox.addTiles( {
+	    id: g6.enemyTilesName,
+	    image: g6.enemySpriteName,
+	    tilew: g6.enemyTileWidth,
+	    tileh: g6.enemyTileHeight,
+	    tilerow: 1,
+	    gapx: 0,
+	    gapy: 0
+	} );
+    },
+
+    enemyExplodeFn: function() {
+	// !?: increment some score.
+	// !?: check game over somewhere.
+
+	var ox = gbox.getTiles( this.tileset ).tilehh;
+	var oy = gbox.getTiles( this.tileset ).tilehw;
+	var exp0 = g6exp.addExpFn( this.x + ox, this.y + oy );
+
+	var ox2 = Math.floor( Math.random() * (ox*4) - (ox*2) );
+	var oy2 = Math.floor( Math.random() * (oy*4) - (oy*2) );
+	g6exp.addExpFn( this.x + ox2, this.y + oy2, -2 );
+	
+	var ox3 = Math.floor( Math.random() * (ox*4) - (ox*2) );
+	var oy3 = Math.floor( Math.random() * (oy*4) - (oy*2) );
+	g6exp.addExpFn( this.x + ox3, this.y + oy3, -4 );
+
+	g6.removeGboxObjFn( this );
+
+	// !?: just for testing fun.
+	g6.addEnemyFn();
+    },
+
+    removeGboxObjFn: function( th ) {
+	th.dx = 0;
+	th.dy = 0;
+	th.accx = 0;
+	th.accy = 0;
+	g6.positionOffscreen( th );
+	gbox.trashObject( th );
+    },
+
+    standardBlitFn: function() {
+	if( ! gbox.objectIsTrash( this ) && this.frame >= 0 ) {
+	    gbox.blitTile(
+		gbox.getBufferContext(),
+		{ tileset: this.tileset,
+		  tile:    this.frame,
+		  dx:      this.x,
+		  dy:      this.y,
+		  // !? flips seem broken to me.
+		  fliph:   this.fliph,
+		  flipv:   this.flipv,
+		  camera:  this.camera,
+		  alpha:   1.0
+		} );
+	}
+    },
+
+    positionOffscreen: function( th ) {
+	th.x = -42;
+	th.y = -42;
+    },
+
+    loadResourcesFn: function() {
+	gbox.addImage( "logo", "logo.jpg" );
+	gbox.addImage( "font", "font.png" );
+	gbox.addFont( { id:"small", image:"font", firstletter:" ", tileh:8, tilew:8, tilerow:255, gapx:0, gapy:0 } );
+	g6.playerLoadTilesFn();
+	g6map.mapLoadTilesFn();
+	g6.enemyLoadTilesFn();
+	g6shot.shotLoadTilesFn();
+	g6exp.expLoadTilesFn();
+    },
+}
+
+function g6_gameInitFn() {
+    gbox.initScreenParentID = g6.canvasParentID;
+    help.akihabaraInit( {
+	title: "Your Momma",
+	portrait: false,
+	splash: { minimalTime: 0 },
+	width: 320,
+	height: 240,
+	zoom: 1
+    } );
+    g6.loadResourcesFn();
+    gbox.loadAll( g6.mainFn );
+}
+
+window.addEventListener( 'load', g6_gameInitFn, false );

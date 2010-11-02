@@ -1,0 +1,179 @@
+var g6map = {
+
+    map:			null,
+    mapIDName:			'mapID',
+    mapTilesName:		'mapTiles',
+    mapTileWidth:		16,
+    mapTileHeight:		16,
+    mapSpriteName:		'mapSprite',
+    mapImageFileName:		'mapSprite.png',
+    mapCanvasName:		'mapCanvas',
+
+    // you /have/ to use space glyph for blank areas,
+    // the map code is hard-coded for it.
+    mapSpaceID:			null, // that is what akihabara requires :-(
+    mapWallID:			0,
+    mapEnemy1ID:		1,
+    mapPlayer1ID:		2,
+
+    clearFn: function() {
+    },
+
+    addMapFn: function() {
+	gbox.addObject( {
+	    id: g6map.iDName,
+	    group: g6.backgroundGroupName,
+	    blit: g6map.blitFn,
+	} );
+    },
+
+    mapBlitFn: function() {
+	var bc = gbox.getBufferContext();
+	var canvas = gbox.getCanvas( g6map.canvasName );
+
+	// this "clear" has to be done by the thing that gets drawn first according
+	// to group layers; too bad we can't just associate it directly to a group.
+	gbox.blitFade( bc, { alpha: 1, color: 'rgb(128,255,255)' } );
+
+	g6map.cameraFollowPlayer( g6.player, { w: g6map..w, h: g6map.map.h } );
+
+	gbox.blit( bc,
+		   canvas, {
+		       dx: 0,
+		       dy: 0,
+		       dw: canvas.width,
+		       dh: canvas.height,
+		       sourcecamera: true }
+		 );
+    },
+
+    cameraFollowPlayer: function( obj, viewdata ) {
+	xbuf = 100;
+	ybuf = 100;
+	xcam = gbox.getCamera().x;
+	ycam = gbox.getCamera().y;
+	if ((obj.x - xcam) > (gbox._screenw - xbuf)) gbox.setCameraX(xcam + (obj.x - xcam) - (gbox._screenw - xbuf), viewdata);
+	if ((obj.x - xcam) < (xbuf))                 gbox.setCameraX(xcam + (obj.x - xcam) - xbuf,                   viewdata);
+	if ((obj.y - ycam) > (gbox._screenh - ybuf)) gbox.setCameraY(ycam + (obj.y - ycam) - (gbox._screenh - ybuf), viewdata);
+	if ((obj.y - ycam) < (ybuf))                 gbox.setCameraY(ycam + (obj.y - ycam) - ybuf,                   viewdata);
+    },
+
+    mapLoadTilesFn: function() {
+	gbox.addImage( g6map.spriteName, g6map.mapImageFileName );
+	gbox.addTiles( {
+	    id: g6map.tilesName,
+	    image: g6map.spriteName,
+	    tilew: g6map.tileWidth,
+	    tileh: g6map.tileHeight,
+	    tilerow: 1,
+	    gapx: 0,
+	    gapy: 0
+	} );
+    },
+
+    loadMap: function() {
+	var key = g6map.getWallKey();
+	var regexp = g6map.getSpacifyRegexp( key );
+	var asciiMap = g6map.getAsciiMap( regexp );
+	return help.asciiArtToMap( asciiMap, key );
+    },
+
+    loadSpawn: function() {
+	var key = g6map.getSpawnKey();
+	var regexp = g6map.getSpacifyRegexp( key );
+	var asciiMap = g6map.getAsciiMap( regexp, key );
+	return asciiMap;
+    },
+
+    getSpacifyRegexp: function( key ) {
+	var parts =_.reduce(
+	    key,
+	    function( m, k ) {
+		var c = k[1];
+		// you /have/ to use space glyph for blank areas,
+		// the map code is hard-coded for it.
+		if( c === ' ' ) {
+		    return m;
+		}
+		else {
+		    return m + k[1];
+		}
+	    },
+	    ""
+	);
+	var regexp = "[^" + parts + "]";
+	return regexp;
+    },
+
+    getWallKey: function() {
+	// you /have/ to use space glyph for blank areas,
+	// the map code is hard-coded for it.
+	return [ [g6map.spaceID, ' '],
+		 [g6map.wallID, 'x'] ];
+    },
+
+    getSpawnKey: function() {
+	// you /have/ to use space glyph for blank areas,
+	// the map code is hard-coded for it.
+	return [ [g6map.player1ID, 'p']
+		 [g6map.enemy1ID, 'r'] ];
+    },
+
+    getAsciiMap: function( spacifyRegexp ) {
+	// you /have/ to use space glyph for blank areas,
+	// the map code is hard-coded for it.
+	var asciiMap = [
+	    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x           r     r    r     r                    x",
+	    "x                                                 x",
+	    "x                              r                  x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                        p                        x",
+	    "x                                 r               x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                  r              x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "x                                                 x",
+	    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+	];
+	var retainedMap = _.map(
+	    asciiMap,
+	    function( v, k, l ) {
+		var regex = new RegExp( spacifyRegexp, "g" );
+		// you /have/ to use space glyph for blank areas,
+		// the map code is hard-coded for it.
+		var spacified = v.toString().replace( regex, " " );
+		return spacified;
+	    } );
+	return retainedMap;
+    },
+
+    setupMapFn: function() {
+	var tmpmap = {
+	    tileset: g6map.tilesName,
+	    map: g6map.loadMap(),
+	    tileIsSolid: function( obj, t ) {
+		return t != null;
+	    }
+	};
+	g6map. = help.finalizeTilemap( tmpmap );
+	gbox.createCanvas( g6map.canvasName, {
+	    w: g6map..w,
+	    h: g6map..h
+	} );
+	gbox.blitTilemap( gbox.getCanvasContext( g6map.canvasName ),
+			  g6map. );
+    },
+}

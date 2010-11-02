@@ -1,0 +1,15 @@
+* support 'p' for spawning.
+
+* worry about ordering of collisions to get game over right.
+
+* check on !? comments.
+
+* apparently Firefox still has the "strip" animation for explosions, but
+  Chrome doesn't. yay.
+
+* some day have a generic collision phase instead :-(
+
+* try to insert the in-between-direction so shooting is more helpful.
+
+
+
