@@ -1,1 +1,3 @@
-Place your license text here.  This file will be incorporated with your app at package time.
+LICENSE: Since this is a test/demo of Akihbara, it follows that library's
+license, namely GPL2/MIT. See http://www.kesiev.com/akihabara/.
+
