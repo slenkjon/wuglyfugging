@@ -12,6 +12,10 @@ var g6 = {
     explosionGroupName:		'explosionGroup',
     gameGroupName:		'gameGroup',
 
+    gameInitialized:		false,
+    gameOverCheckAllowed:	true,
+    gameOverInProgress:		false,
+
     kStillBitMask:		0,
     kRightBitMask:		1,
     kDownBitMask:		2,
@@ -47,7 +51,14 @@ var g6 = {
 	return true;
     },
 
+    clearFn: function() {
+	g6.gameInitialized = false;
+	g6.gameOverCheckAllowed = true;
+	g6.gameOverInProgress = false;
+    },
+
     initializeGameFn: function() {
+	g6.clearFn();
 	g6anim.clearFn();
 	g6enemy.clearFn();
 	g6exp.clearFn();
@@ -59,31 +70,44 @@ var g6 = {
 	g6player.addPlayerFn();
 	g6map.addMapFn();
 	g6.addEnemiesFn();
+	g6.gameInitialized = true;
     },
 
     gameOverCheckFn: function() {
-	if( gbox.objectIsTrash( g6player.player ) ) {
-	    g6.gameOverFailedFn();
-	}
-	if( g6enemy.liveCount == 0 ) {
-	    g6.gameOverWonFn();
+	if( g6.gameInitialized && g6.gameOverCheckAllowed ) {
+	    if( gbox.objectIsTrash( g6player.player ) ) {
+		g6.gameOverFailedFn();
+	    }
+	    if( g6enemy.liveCount == 0 ) {
+		g6.gameOverWonFn();
+	    }
 	}
     },
 
     gameOverFailedFn: function() {
-	g6.mainGame.setState( 700 );
+	g6.gameOverInProgress = true;
+	if( g6exp.liveCount == 0 ) {
+	    g6.mainGame.setState( 700 );
+	    g6.gameOverCheckAllowed = false;
+	}
     },
 
     gameOverWonFn: function() {
-	g6.mainGame.setState( 801 );
+	g6.gameOverInProgress = true;
+	if( g6exp.liveCount == 0 ) {
+	    g6.mainGame.setState( 801 );
+	    g6.gameOverCheckAllowed = false;
+	}
     },
 
     getDirectionBitsFn: function( th ) {
 	var directionBits = g6.kStillBitMask;
-	if( th.accx > 0 ) { directionBits |= g6.kRightBitMask; }
-	if( th.accx < 0 ) { directionBits |= g6.kLeftBitMask; }
-	if( th.accy > 0 ) { directionBits |= g6.kDownBitMask; }
-	if( th.accy < 0 ) { directionBits |= g6.kUpBitMask; }
+	if( ! g6.gameOverInProgress ) {
+	    if( th.accx > 0 ) { directionBits |= g6.kRightBitMask; }
+	    if( th.accx < 0 ) { directionBits |= g6.kLeftBitMask; }
+	    if( th.accy > 0 ) { directionBits |= g6.kDownBitMask; }
+	    if( th.accy < 0 ) { directionBits |= g6.kUpBitMask; }
+	}
 	return directionBits;
     },
 

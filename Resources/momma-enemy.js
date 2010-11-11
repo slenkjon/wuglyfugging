@@ -42,37 +42,39 @@ var g6enemy = {
     },
 
     firstFn: function() {
-	if( ! this.thinkCount || this.thinkCount === 0 ) {
-	    this.thinkCount = g6.thinkCountInit;
+	if( ! g6.gameOverInProgress ) {
+	    if( ! this.thinkCount || this.thinkCount === 0 ) {
+		this.thinkCount = g6.thinkCountInit;
 
-	    // !? un-hard-code player.
-	    var dx = g6player.player.x - this.x;
-	    var dy = g6player.player.y - this.y;
+		// !? un-hard-code player.
+		var dx = g6player.player.x - this.x;
+		var dy = g6player.player.y - this.y;
 
-	    if( dx > 0 ) {
-		this.mx = this.speed;
+		if( dx > 0 ) {
+		    this.mx = this.speed;
+		}
+		else if( dx < 0 ) {
+		    this.mx = -this.speed;
+		}
+		if( dy > 0 ) {
+		    this.my = this.speed;
+		}
+		else if( dy < 0 ) {
+		    this.my = -this.speed;
+		}
 	    }
-	    else if( dx < 0 ) {
-		this.mx = -this.speed;
-	    }
-	    if( dy > 0 ) {
-		this.my = this.speed;
-	    }
-	    else if( dy < 0 ) {
-		this.my = -this.speed;
-	    }
-	}
-	this.thinkCount--;
-	this.x += this.mx;
-	this.y += this.my;
+	    this.thinkCount--;
+	    this.x += this.mx;
+	    this.y += this.my;
 
-	toys.topview.tileCollision( this, g6map.map, 'map', null, { tolerance: 6, approximation: 3 } );
-	var collided = toys.topview.findCollision( this, g6.enemyGroupName );
-	if( collided !== null && collided !== this ) {
-	    this.explodeFn();
-	    g6.removeGboxObjFn( this );
-	    if( collided.explodeFn ) {
-		collided.explodeFn();
+	    toys.topview.tileCollision( this, g6map.map, 'map', null, { tolerance: 6, approximation: 3 } );
+	    var collided = toys.topview.findCollision( this, g6.enemyGroupName );
+	    if( collided !== null && collided !== this ) {
+		this.explodeFn();
+		g6.removeGboxObjFn( this );
+		if( collided.explodeFn ) {
+		    collided.explodeFn();
+		}
 	    }
 	}
     },

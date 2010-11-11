@@ -12,8 +12,10 @@ var g6exp = {
     imageFileName:	'exAll.png',
     maxFrameIndex:	4, // !? can we calc this via akihabara? suck!
     framePause:		2,
+    liveCount:		0,
 
     clearFn: function() {
+	g6exp.liveCount = 0;
     },
 
     addExpFn: function( cx, cy, frameOffset ) {
@@ -32,6 +34,8 @@ var g6exp = {
 
 	exp.x = cx - gbox.getTiles( exp.tileset ).tilehh;
 	exp.y = cy - gbox.getTiles( exp.tileset ).tilehw;
+
+	g6exp.liveCount++;
     },
     
     initFn: function() {
@@ -41,6 +45,7 @@ var g6exp = {
     firstFn: function() {
 	if( this.frame >= g6exp.maxFrameIndex ) {
 	    g6.removeGboxObjFn( this );
+	    g6exp.liveCount--;
 	}
 	else {
 	    g6anim.updateFrameFn( this, g6exp.framePause, g6exp.maxFrameIndex );
